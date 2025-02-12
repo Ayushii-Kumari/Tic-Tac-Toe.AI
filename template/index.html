@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic-Tac-Toe AI</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #2E2E2E;
+            color: white;
+        }
+
+        h1 {
+            font-size: 36px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0px 0px 3px cyan;
+            margin-bottom: 10px;
+        }
+
+        .scoreboard {
+            display: flex;
+            justify-content: space-between;
+            width: 368px;
+            margin: 0 auto 20px;
+        }
+
+        .score-box {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0px 0px 10px rgba(255, 255, 255, 0.2);
+            width: 100px;
+        }
+
+        .score-box h3 {
+            margin: 0 0 5px 0;
+            font-size: 18px;
+            color: white;
+        }
+
+        .player-score {
+            color: red;
+        }
+
+        .ai-score {
+            color: green;
+        }
+
+        .score {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0;
+        }
+
+        #gameBoard {
+            display: grid;
+            grid-template-columns: repeat(3, 120px);
+            grid-template-rows: repeat(3, 120px);
+            gap: 4px;
+            width: 368px;
+            margin: 20px auto;
+            position: relative;
+        }
+
+        .cell {
+            width: 120px;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 80px;
+            cursor: pointer;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 4px solid white;
+            border-radius: 15px;
+            box-shadow: 0px 0px 10px rgba(255, 255, 255, 0.6);
+        }
+
+        .x {
+            color: red;
+            text-shadow: 0px 0px 12px red;
+            font-weight: normal;
+        }
+
+        .o {
+            color: green;
+            text-shadow: 0px 0px 12px green;
+            font-weight: normal;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 15px;
+        }
+
+        .restart,
+        .new-game {
+            background-color: green;
+            color: white;
+            font-size: 22px;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0 10px; /* Add some horizontal spacing */
+        }
+
+        .winner-box {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 12px;
+            font-size: 22px;
+            font-weight: bold;
+            border-radius: 5px;
+            margin-top: 15px;
+            color: white;
+        }
+
+        .winning-line {
+            position: absolute;
+            background-color: yellow;
+            box-shadow: 0px 0px 12px yellow;
+            height: 5px;
+            transition: all 0.3s ease-in-out;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Tic-Tac-Toe vs AI</h1>
+    <div class="scoreboard">
+        <div class="score-box">
+            <h3>Player</h3>
+            <p class="score player-score" id="playerScore">0</p>
+        </div>
+        <div class="score-box">
+            <h3>AI</h3>
+            <p class="score ai-score" id="aiScore">0</p>
+        </div>
+    </div>
+    <div id="gameBoard"></div>
+    <div class="button-container">
+        <button class="restart" onclick="resetGame()">Restart</button>
+        <button class="new-game" onclick="startNewGame()">New Game</button>
+    </div>
+    <div id="winnerBox" class="winner-box" style="display:none;"></div>
+
+    <script>
+        let board = Array(3).fill().map(() => Array(3).fill(0));
+        let winner = null;
+        let winningPath = [];
+        let playerScore = 0;
+        let aiScore = 0;
+
+        function createBoard() {
+            const gameBoard = document.getElementById('gameBoard');
+            gameBoard.innerHTML = '';
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.setAttribute('data-row', i);
+                    cell.setAttribute('data-col', j);
+                    cell.onclick = () => makeMove(i, j);
+                    gameBoard.appendChild(cell);
+                }
+            }
+        }
+
+        function drawWinningLine(path) {
+            if (!path || path.length < 2) return;
+
+            const gameBoard = document.getElementById('gameBoard');
+            const line = document.createElement('div');
+            line.className = 'winning-line';
+
+            const start = path[0];
+            const end = path[path.length - 1];
+            const cellSize = 120;
+            const gap = 4;
+            const boardWidth = (cellSize + gap) * 3 - gap;
+            const totalCellSize = cellSize + gap;
+
+            let length, angle, left, top;
+
+            if (start[0] === end[0]) { // Horizontal
+                length = '368px';
+                angle = 0;
+                left = '0px';
+                top = `${start[0] * totalCellSize + (cellSize / 2)}px`;
+            } else if (start[1] === end[1]) { // Vertical
+                length = '368px';
+                angle = 90;
+                left = `${start[1] * totalCellSize + (cellSize / 2)}px`;
+                top = '0px';
+                line.style.transformOrigin = '0 50%';
+            } else { // Diagonal
+                length = '520px';
+                if (start[0] === 0 && start[1] === 0) { // Main diagonal
+                    angle = 45;
+                    left = '-76px';
+                    top = '184px';
+                } else { // Counter diagonal
+                    angle = -45;
+                    left = '-76px';
+                    top = '184px';
+                }
+            }
+
+            line.style.width = length;
+            line.style.transform = `rotate(${angle}deg)`;
+            line.style.left = left;
+            line.style.top = top;
+
+            gameBoard.appendChild(line);
+        }
+
+        function updateBoard() {
+            const cells = document.getElementsByClassName('cell');
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    const cell = cells[i * 3 + j];
+                    cell.innerHTML = '';
+                    if (board[i][j] === 1) {
+                        cell.innerHTML = '<span class="x">X</span>';
+                    } else if (board[i][j] === -1) {
+                        cell.innerHTML = '<span class="o">O</span>';
+                    }
+                }
+            }
+        }
+
+        async function makeMove(row, col) {
+            if (winner || board[row][col] !== 0) return;
+
+            const response = await fetch('/make_move', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    row,
+                    col
+                })
+            });
+
+            const data = await response.json();
+            board = data.board;
+            winner = data.winner;
+            winningPath = data.winning_path;
+
+            updateBoard();
+
+            if (winner) {
+                document.getElementById('winnerBox').style.display = 'block';
+                document.getElementById('winnerBox').innerText = data.message;
+                if (winningPath.length > 0) {
+                    drawWinningLine(winningPath);
+                }
+
+                if (data.message.includes('Player')) {
+                    playerScore++;
+                    document.getElementById('playerScore').innerText = playerScore;
+                } else if (data.message.includes('AI')) {
+                    aiScore++;
+                    document.getElementById('aiScore').innerText = aiScore;
+                }
+            }
+        }
+
+        async function resetGame() {
+            const response = await fetch('/reset', {
+                method: 'POST'
+            });
+            board = Array(3).fill().map(() => Array(3).fill(0));
+            winner = null;
+            winningPath = [];
+            createBoard();
+            document.getElementById('winnerBox').style.display = 'none';
+            const existingLines = document.getElementsByClassName('winning-line');
+            while (existingLines.length > 0) {
+                existingLines[0].remove();
+            }
+        }
+
+        function startNewGame() {
+            playerScore = 0;
+            aiScore = 0;
+            document.getElementById('playerScore').innerText = '0';
+            document.getElementById('aiScore').innerText = '0';
+            resetGame();  // Reset the board as well
+        }
+
+        createBoard();
+    </script>
+</body>
+
+</html>
